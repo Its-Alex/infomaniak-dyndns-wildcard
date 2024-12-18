@@ -1,0 +1,60 @@
+# Infomaniak-dyndns-wildcard
+
+This tool is used to auto update IP on a wildcard dns record for infomaniak
+since their dyndns solution don't support wildcard dns records.
+
+This project support only one dns record for now since it's mostly used for
+wildcard. If you're not updating a wildcard DNS record you should see
+[Infomaniak Dyndns](https://www.infomaniak.com/fr/domaines/dyndns).
+
+## Requirements
+
+- [mise](https://mise.jdx.dev/)
+- [docker](https://www.docker.com/) (if you want to build container)
+
+You must run theses commands the first time:
+
+```sh
+$ mise trust && mise install
+```
+
+## Getting started
+
+This tool can be used as a docker container or directly using rust.
+
+### How to use docker container
+
+You can use it in a compose file with the following example:
+
+```docker-compose
+services:
+  infomaniak-dyndns-wildcard:
+    image: <your-tag>
+    environment:
+      - INFOMANIAK_DYNDNS_WILDCARD_INFOMANIAK_API_TOKEN=<your-informaniak-token>
+      - INFOMANIAK_DYNDNS_WILDCARD_TIME_BETWEEN_UPDATES_IN_SECONDS=<time-between-update-in-seconds>
+      - INFOMANIAK_DYNDNS_WILDCARD_DNS_ZONE_ID=<your-dns-zone>
+      - INFOMANIAK_DYNDNS_WILDCARD_RECORD_NAME=<your-dns-record> # In our case certainly a "*" (wildcard) or "*.example"
+```
+
+Image should be builded by yourself for now.
+
+## How to hack
+
+First, you should set all environment variables beginning with
+`INFOMANIAK_DYNDNS_WILDCARD_INFOMANIAK` in [.envrc](./.envrc) in your shell.
+
+When this is done, you can run the app locally using:
+
+```sh
+$ cargo run
+   Compiling infomaniak-dyndns-wildcard v0.1.0 (/home/alex/Documents/infomaniak-dyndns-wildcard-domain)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.81s
+     Running `target/debug/infomaniak-dyndns-wildcard`
+Public IP: 176.130.154.147
+...
+```
+
+# License
+
+[MIT](./LICENSE)
