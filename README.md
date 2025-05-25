@@ -7,6 +7,10 @@ This project support only one dns record for now since it's mostly used for
 wildcard. If you're not updating a wildcard DNS record you should see
 [Infomaniak Dyndns](https://www.infomaniak.com/fr/domaines/dyndns).
 
+This is my first project in Rust. It is intended as a way to learn the language,
+so I am fully aware that the code may be lacking. Please don't hesitate to make
+a PR to improve it!
+
 ## Requirements
 
 - [mise](https://mise.jdx.dev/)
