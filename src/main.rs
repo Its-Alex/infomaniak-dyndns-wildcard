@@ -1,19 +1,13 @@
 use config::Config;
-use reqwest::blocking::{Client, Response};
+use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use serde_json::{json, Value};
-use std::error::Error;
 use std::thread;
 use std::time::Duration;
 
-const RECORD_TYPE: &str = "A";
-const INFOMANIAK_API_URL: &str = "https://api.infomaniak.com/2/zones";
+mod dns_record;
+mod public_ip;
 
-/// Retrieves the public IP address.
-fn get_public_ip() -> Result<String, Box<dyn Error>> {
-    let response = reqwest::blocking::get("https://ipinfo.io/ip")?;
-    Ok(response.text()?.trim().to_string())
-}
+const RECORD_TYPE: &str = "A";
 
 fn create_http_client(api_token: &str) -> Client {
     let mut headers: HeaderMap = HeaderMap::new();
@@ -30,93 +24,6 @@ fn create_http_client(api_token: &str) -> Client {
         .default_headers(headers)
         .build()
         .expect("Failed to build client")
-}
-
-fn get_dns_records(
-    client: &Client,
-    ip: &str,
-    dns_zone_id: &str,
-    record_name: &str,
-) -> Result<Option<String>, Box<dyn Error>> {
-    // Retrieve existing records
-    let response: Response = client
-        .get(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
-        .send()?;
-    if !response.status().is_success() {
-        return Err(format!("Error retrieving DNS records: {}", response.status()).into());
-    }
-    let records: Value = response.json()?;
-
-    // Check if an existing record matches
-    let mut record_id: Option<String> = None;
-    if let Some(records_array) = records["data"].as_array() {
-        for record in records_array {
-            if record["source"] == record_name && record["type"] == RECORD_TYPE {
-                if let Some(target) = Some(
-                    record["target"]
-                        .as_str()
-                        .unwrap()
-                        .trim_matches('"')
-                        .to_string(),
-                ) {
-                    if target == ip {
-                        return Err("Record found, but no changes detected".into());
-                    }
-                }
-
-                record_id = Some(record["id"].to_string());
-                break;
-            }
-        }
-    }
-
-    if record_id.is_none() {
-        println!("No existing record found");
-        return Ok(None);
-    }
-
-    Ok(record_id)
-}
-
-/// Updates or creates a DNS record via the Infomaniak API.
-fn update_dns_record(
-    client: &Client,
-    ip: &str,
-    record_id: Option<&str>,
-    dns_zone_id: &str,
-    record_name: &str,
-) -> Result<Value, Box<dyn Error>> {
-    // Prepare data for updating or creating
-    let record_data = json!({
-        "source": record_name,
-        "target": ip,
-        "type": RECORD_TYPE,
-        "ttl": "300" // TTL in seconds
-    });
-
-    if let Some(id) = record_id {
-        // Update existing record
-        let update_url = format!("{}/{}/records/{}", INFOMANIAK_API_URL, dns_zone_id, id);
-        let result = client.delete(&update_url).send()?;
-        if !result.status().is_success() {
-            return Err(format!("Error updating DNS record {} of type {}: {}", record_name, RECORD_TYPE, result.status()).into());
-        }
-    }
-
-    // Create a new record
-    let result = client
-        .post(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
-        .json(&record_data)
-        .send()?;
-    if !result.status().is_success() {
-        return Err(format!(
-            "Error updating DNS records: {}, body: {:?}",
-            result.status(),
-            result.text()
-        )
-        .into());
-    }
-    Ok(result.json()?)
 }
 
 fn main() {
@@ -142,17 +49,24 @@ fn main() {
     let client = create_http_client(&api_token);
 
     loop {
-        match get_public_ip() {
+        match public_ip::get_public_ip() {
             Ok(ip) => {
                 println!("Public IP: {}", ip);
-                match get_dns_records(&client, &ip, &dns_zone_id, &record_name) {
+                match dns_record::get_dns_records(
+                    &client,
+                    &ip.to_string(),
+                    &dns_zone_id,
+                    &record_name,
+                    RECORD_TYPE,
+                ) {
                     Ok(record_id) => {
-                        match update_dns_record(
+                        match dns_record::update_dns_record(
                             &client,
-                            &ip,
+                            &ip.to_string(),
                             record_id.as_deref(),
                             &dns_zone_id,
                             &record_name,
+                            RECORD_TYPE,
                         ) {
                             Ok(result) => println!("Update successful: {:?}", result),
                             Err(e) => eprintln!("Error updating DNS: {}", e),
