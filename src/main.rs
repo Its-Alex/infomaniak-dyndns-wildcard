@@ -1,10 +1,10 @@
+use config::Config;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::{json, Value};
 use std::error::Error;
-use config::Config;
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
 const RECORD_TYPE: &str = "A";
 const INFOMANIAK_API_URL: &str = "https://api.infomaniak.com/2/zones";
@@ -15,18 +15,33 @@ fn get_public_ip() -> Result<String, Box<dyn Error>> {
     Ok(response.text()?.trim().to_string())
 }
 
-fn create_client(api_token: &str) -> Client {
+fn create_http_client(api_token: &str) -> Client {
     let mut headers: HeaderMap = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_token))
-        .expect("Failed to create authorization header"));
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("Content-Type: application/json"));
-    Client::builder().default_headers(headers).build()
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("Bearer {}", api_token))
+            .expect("Failed to create authorization header"),
+    );
+    headers.insert(
+        CONTENT_TYPE,
+        HeaderValue::from_static("Content-Type: application/json"),
+    );
+    Client::builder()
+        .default_headers(headers)
+        .build()
         .expect("Failed to build client")
 }
 
-fn get_dns_records(client: &Client, ip: &str, dns_zone_id: &str, record_name: &str) -> Result<Option<String>, Box<dyn Error>> {
+fn get_dns_records(
+    client: &Client,
+    ip: &str,
+    dns_zone_id: &str,
+    record_name: &str,
+) -> Result<Option<String>, Box<dyn Error>> {
     // Retrieve existing records
-    let response: Response = client.get(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id)).send()?;
+    let response: Response = client
+        .get(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
+        .send()?;
     if !response.status().is_success() {
         return Err(format!("Error retrieving DNS records: {}", response.status()).into());
     }
@@ -37,7 +52,13 @@ fn get_dns_records(client: &Client, ip: &str, dns_zone_id: &str, record_name: &s
     if let Some(records_array) = records["data"].as_array() {
         for record in records_array {
             if record["source"] == record_name && record["type"] == RECORD_TYPE {
-                if let Some(target) = Some(record["target"].as_str().unwrap().trim_matches('"').to_string()) {
+                if let Some(target) = Some(
+                    record["target"]
+                        .as_str()
+                        .unwrap()
+                        .trim_matches('"')
+                        .to_string(),
+                ) {
                     if target == ip {
                         return Err("Record found, but no changes detected".into());
                     }
@@ -58,7 +79,13 @@ fn get_dns_records(client: &Client, ip: &str, dns_zone_id: &str, record_name: &s
 }
 
 /// Updates or creates a DNS record via the Infomaniak API.
-fn update_dns_record(client: &Client, ip: &str, record_id: Option<&str>, dns_zone_id: &str, record_name: &str) -> Result<Value, Box<dyn Error>> {
+fn update_dns_record(
+    client: &Client,
+    ip: &str,
+    record_id: Option<&str>,
+    dns_zone_id: &str,
+    record_name: &str,
+) -> Result<Value, Box<dyn Error>> {
     // Prepare data for updating or creating
     let record_data = json!({
         "source": record_name,
@@ -72,21 +99,31 @@ fn update_dns_record(client: &Client, ip: &str, record_id: Option<&str>, dns_zon
         let update_url = format!("{}/{}/records/{}", INFOMANIAK_API_URL, dns_zone_id, id);
         let result = client.delete(&update_url).send()?;
         if !result.status().is_success() {
-            return Err(format!("Error updating DNS records: {}", result.status()).into());
+            return Err(format!("Error updating DNS record {} of type {}: {}", record_name, RECORD_TYPE, result.status()).into());
         }
     }
 
     // Create a new record
-    let result = client.post(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id)).json(&record_data).send()?;
+    let result = client
+        .post(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
+        .json(&record_data)
+        .send()?;
     if !result.status().is_success() {
-        return Err(format!("Error updating DNS records: {}, body: {:?}", result.status(), result.text()).into());
+        return Err(format!(
+            "Error updating DNS records: {}, body: {:?}",
+            result.status(),
+            result.text()
+        )
+        .into());
     }
     Ok(result.json()?)
 }
 
 fn main() {
     let config = Config::builder()
-        .add_source(config::Environment::with_prefix("infomaniak_dyndns_wildcard"))
+        .add_source(config::Environment::with_prefix(
+            "infomaniak_dyndns_wildcard",
+        ))
         .build()
         .unwrap();
     let time_between_updates_in_seconds = config
@@ -102,7 +139,7 @@ fn main() {
         .get_string("record_name")
         .expect("record_name must be set");
 
-    let client = create_client(&api_token);
+    let client = create_http_client(&api_token);
 
     loop {
         match get_public_ip() {
@@ -110,7 +147,13 @@ fn main() {
                 println!("Public IP: {}", ip);
                 match get_dns_records(&client, &ip, &dns_zone_id, &record_name) {
                     Ok(record_id) => {
-                        match update_dns_record(&client, &ip, record_id.as_deref(), &dns_zone_id, &record_name) {
+                        match update_dns_record(
+                            &client,
+                            &ip,
+                            record_id.as_deref(),
+                            &dns_zone_id,
+                            &record_name,
+                        ) {
                             Ok(result) => println!("Update successful: {:?}", result),
                             Err(e) => eprintln!("Error updating DNS: {}", e),
                         }
