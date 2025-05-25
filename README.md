@@ -57,6 +57,24 @@ Public IP: 176.130.154.147
 ...
 ```
 
+#### How to lint
+
+To lint the project you can use [clippy](https://github.com/rust-lang/rust-clippy):
+
+```sh
+$ rustup component add clippy
+$ cargo clippy --all-targets --all-features -- -D warnings
+```
+
+#### How to format
+
+To format the project you can use [rustfmt](https://github.com/rust-lang/rustfmt):
+
+```sh
+$ rustup component add rustfmt
+$ cargo fmt --all
+```
+
 # License
 
 [MIT](./LICENSE)
