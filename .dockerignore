@@ -1,1 +1,8 @@
 /target
+/passwords
+/.github
+.rustfmt.toml
+.envrc
+.mise.toml
+LICENSE
+READNE.md
