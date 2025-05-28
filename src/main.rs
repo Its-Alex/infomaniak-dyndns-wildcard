@@ -52,18 +52,30 @@ fn main() {
         match public_ip::get_public_ipv4(&client) {
             Ok(ip) => {
                 println!("Public IP: {}", ip);
-                match dns_record::get_dns_records(
-                    &client,
-                    &ip.to_string(),
-                    &dns_zone_id,
-                    &record_name,
-                    RECORD_TYPE,
-                ) {
-                    Ok(record_id) => {
+                match dns_record::get_dns_records(&client, &dns_zone_id, &record_name, RECORD_TYPE)
+                {
+                    Ok(Some(record)) => {
+                        if record.target == ip.to_string() {
+                            println!("DNS record for IPv4 is already up to date.");
+                        } else {
+                            match dns_record::update_dns_record(
+                                &client,
+                                &ip.to_string(),
+                                Some(&record.id.to_string()),
+                                &dns_zone_id,
+                                &record_name,
+                                RECORD_TYPE,
+                            ) {
+                                Ok(result) => println!("Update successful: {:?}", result),
+                                Err(e) => eprintln!("Error updating DNS: {}", e),
+                            }
+                        }
+                    }
+                    Ok(None) => {
                         match dns_record::update_dns_record(
                             &client,
                             &ip.to_string(),
-                            record_id.as_deref(),
+                            None,
                             &dns_zone_id,
                             &record_name,
                             RECORD_TYPE,
