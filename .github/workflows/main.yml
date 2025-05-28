@@ -8,7 +8,7 @@ jobs:
   check-rust-code:
     name: "Check rust code"
     runs-on: ubuntu-latest
-    container: rust:1.83.0-bookworm
+    container: rust:1.87.0-bookworm
     steps:
       - name: Checkout project
         uses: actions/checkout@v4.1.7
