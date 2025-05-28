@@ -28,6 +28,7 @@ jobs:
     name: "Test build docker image"
     if: ${{ !contains(github.ref, 'refs/heads/main') }}
     runs-on: ubuntu-latest
+    needs: [check-rust-code]
     steps:
       - name: Checkout project
         uses: actions/checkout@v4.1.7
@@ -53,6 +54,7 @@ jobs:
     name: "Pre release"
     if: ${{ github.repository == 'Its-Alex/infomaniak-dyndns-wildcard' && contains(github.ref, 'refs/heads/main') }}
     runs-on: "ubuntu-latest"
+    needs: [check-rust-code]
     steps:
       - name: Checkout project
         uses: actions/checkout@v4.1.7
@@ -87,6 +89,7 @@ jobs:
     name: "Tagged release"
     if: ${{ github.repository == 'Its-Alex/infomaniak-dyndns-wildcard' && contains(github.ref, 'refs/tags/v') }}
     runs-on: "ubuntu-latest"
+    needs: [check-rust-code]
     steps:
       - name: Checkout project
         uses: actions/checkout@v4.1.7
