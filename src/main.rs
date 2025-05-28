@@ -49,7 +49,7 @@ fn main() {
     let client = create_http_client(&api_token);
 
     loop {
-        match public_ip::get_public_ip() {
+        match public_ip::get_public_ipv4(&client) {
             Ok(ip) => {
                 println!("Public IP: {}", ip);
                 match dns_record::get_dns_records(
