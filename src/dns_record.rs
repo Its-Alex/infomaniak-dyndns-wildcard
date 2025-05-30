@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::error::Error;
 
-const INFOMANIAK_API_URL: &str = "https://api.infomaniak.com/2/zones";
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DnsRecord {
     pub id: u64,
@@ -23,13 +21,17 @@ struct GetRecordsResponse {
 
 pub fn get_dns_records(
     client: &Client,
+    infomaniak_zones_api_url: &str,
     dns_zone_id: &str,
     record_name: &str,
     record_type: &str,
 ) -> Result<Option<DnsRecord>, Box<dyn Error>> {
     // Retrieve existing records
     let response: Response = client
-        .get(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
+        .get(format!(
+            "{}/{}/records",
+            infomaniak_zones_api_url, dns_zone_id
+        ))
         .send()?;
 
     // Return an error if the request was not successful
@@ -60,6 +62,7 @@ struct UpdateRecordResponse {
 /// Updates or creates a DNS record via the Infomaniak API.
 pub fn update_dns_record(
     client: &Client,
+    infomaniak_zones_api_url: &str,
     ip: &str,
     record_id_to_delete: Option<&str>,
     dns_zone_id: &str,
@@ -79,7 +82,7 @@ pub fn update_dns_record(
         let delete_record_result = client
             .delete(format!(
                 "{}/{}/records/{}",
-                INFOMANIAK_API_URL, dns_zone_id, id
+                infomaniak_zones_api_url, dns_zone_id, id
             ))
             .send()?;
 
@@ -96,7 +99,10 @@ pub fn update_dns_record(
 
     // Create a new record
     let create_record_result = client
-        .post(format!("{}/{}/records", INFOMANIAK_API_URL, dns_zone_id))
+        .post(format!(
+            "{}/{}/records",
+            infomaniak_zones_api_url, dns_zone_id
+        ))
         .json(&record_data)
         .send()?;
 
