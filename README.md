@@ -34,11 +34,13 @@ You can use it in a compose file with the following example:
 services:
   infomaniak-dyndns-wildcard:
     image: itsalex/infomaniak-dyndns-wildcard:latest
+    network_mode: host
     environment:
       - INFOMANIAK_DYNDNS_WILDCARD_INFOMANIAK_API_TOKEN=<your-informaniak-token>
       - INFOMANIAK_DYNDNS_WILDCARD_TIME_BETWEEN_UPDATES_IN_SECONDS=<time-between-update-in-seconds>
       - INFOMANIAK_DYNDNS_WILDCARD_DNS_ZONE_ID=<your-dns-zone>
       - INFOMANIAK_DYNDNS_WILDCARD_RECORD_NAME=<your-dns-record> # In our case certainly a "*" (wildcard) or "*.example"
+      - INFOMANIAK_DYNDNS_WILDCARD_IPV6_ENABLED=false # Default to false
 ```
 
 ## How to hack
