@@ -23,13 +23,11 @@ pub fn get_dns_records(
     client: &Client,
     infomaniak_zones_api_url: &str,
     dns_zone_id: &str,
-    record_name: &str,
-    record_type: &str,
-) -> Result<Option<DnsRecord>, Box<dyn Error>> {
+) -> Result<Vec<DnsRecord>, Box<dyn Error>> {
     // Retrieve existing records
     let response: Response = client
         .get(format!(
-            "{}/{}/records",
+            "{}/{}/records?filter[types][]=A&filter[types][]=AAAA",
             infomaniak_zones_api_url, dns_zone_id
         ))
         .send()?;
@@ -43,15 +41,9 @@ pub fn get_dns_records(
         .into());
     }
 
-    // Return matching record if it exists
-    let api_response: GetRecordsResponse = response.json()?;
-    for record in api_response.data {
-        if record.source == record_name && record.record_type == record_type {
-            return Ok(Some(record));
-        }
-    }
+    let api_resp = response.json::<GetRecordsResponse>()?.data;
 
-    Ok(None)
+    Ok(api_resp)
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,7 +124,10 @@ mod tests {
     fn test_get_dns_records_success_with_matching_record() {
         let mut server = Server::new();
         let mock = server
-            .mock("GET", "/test-zone/records")
+            .mock(
+                "GET",
+                "/test-zone/records?filter[types][]=A&filter[types][]=AAAA",
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(
@@ -161,62 +156,62 @@ mod tests {
             .create();
 
         let client = Client::new();
-        let result = get_dns_records(&client, &server.url(), "test-zone", "test.example.com", "A");
+        let result = get_dns_records(&client, &server.url(), "test-zone");
 
         mock.assert();
         assert!(result.is_ok());
-        let record = result.unwrap();
-        assert!(record.is_some());
-        let record = record.unwrap();
-        assert_eq!(record.id, 123);
-        assert_eq!(record.source, "test.example.com");
-        assert_eq!(record.target, "192.168.1.1");
+        let records = result.unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].id, 123);
+        assert_eq!(records[0].source, "test.example.com");
+        assert_eq!(records[0].target, "192.168.1.1");
+        assert_eq!(records[1].id, 124);
+        assert_eq!(records[1].source, "other.example.com");
+        assert_eq!(records[1].target, "192.168.1.2");
     }
 
     #[test]
     fn test_get_dns_records_success_no_matching_record() {
         let mut server = Server::new();
         let mock = server
-            .mock("GET", "/test-zone/records")
+            .mock(
+                "GET",
+                "/test-zone/records?filter[types][]=A&filter[types][]=AAAA",
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(
                 json!({
-                    "data": [
-                        {
-                            "id": 124,
-                            "source": "other.example.com",
-                            "target": "192.168.1.2",
-                            "ttl": 300,
-                            "type": "A",
-                            "updated_at": 1234567890
-                        }
-                    ]
+                    "data": []
                 })
                 .to_string(),
             )
             .create();
 
         let client = Client::new();
-        let result = get_dns_records(&client, &server.url(), "test-zone", "test.example.com", "A");
+        let result = get_dns_records(&client, &server.url(), "test-zone");
 
         mock.assert();
         assert!(result.is_ok());
-        assert!(result.unwrap().is_none());
+        let records = result.unwrap();
+        assert_eq!(records.len(), 0);
     }
 
     #[test]
     fn test_get_dns_records_api_error() {
         let mut server = Server::new();
         let mock = server
-            .mock("GET", "/test-zone/records")
+            .mock(
+                "GET",
+                "/test-zone/records?filter[types][]=A&filter[types][]=AAAA",
+            )
             .with_status(404)
             .with_header("content-type", "application/json")
             .with_body(json!({"error": "Zone not found"}).to_string())
             .create();
 
         let client = Client::new();
-        let result = get_dns_records(&client, &server.url(), "test-zone", "test.example.com", "A");
+        let result = get_dns_records(&client, &server.url(), "test-zone");
 
         mock.assert();
         assert!(result.is_err());
