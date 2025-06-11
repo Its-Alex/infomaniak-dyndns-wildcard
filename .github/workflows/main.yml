@@ -77,12 +77,14 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - uses: "softprops/action-gh-release@v2"
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: true
-          title: "Development Build"
+          repository: Its-Alex/infomaniak-dyndns-wildcard
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          make_latest: true
+          generate_release_notes: true
+          name: "Development Build"
+          tag_name: "latest"
 
   tagged-release:
     name: "Tagged release"
@@ -117,7 +119,9 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - uses: "softprops/action-gh-release@v2"
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          repository: Its-Alex/infomaniak-dyndns-wildcard
+          token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
+          generate_release_notes: true
