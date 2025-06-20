@@ -50,9 +50,9 @@ fn main() {
     let dns_zone_id = config
         .get_string("dns_zone_id")
         .expect("dns_zone_id must be set");
-    let record_name = config
-        .get_string("record_name")
-        .expect("record_name must be set");
+    let records_name = config
+        .get_string("records_name")
+        .expect("records_name must be set");
     let ipv6_enabled = config.get_bool("ipv6_enabled").unwrap_or(false);
 
     let client = create_http_client(&api_token);
@@ -98,85 +98,87 @@ fn main() {
                 }
             };
 
-        let mut record_a_found = false;
-        let mut record_aaaa_found = false;
-        for record in dns_records {
-            if record.source == record_name && record.record_type == "A" {
-                info!("Found A record: {:?}", record);
-                record_a_found = true;
+        for record_name in records_name.split(',') {
+            let mut record_a_found = false;
+            let mut record_aaaa_found = false;
+            for record in &dns_records {
+                if record.source == record_name && record.record_type == "A" {
+                    info!("Found A record: {:?}", record);
+                    record_a_found = true;
 
-                if record.target == public_ipv4.to_string() {
-                    info!("DNS record for IPv4 is already up to date.");
-                } else {
-                    info!("Updating DNS record for IPv4...");
-                    match dns_record::update_dns_record(
-                        &client,
-                        INFOMANIAK_ZONES_API_URL,
-                        &public_ipv4.to_string(),
-                        Some(&record.id.to_string()),
-                        &dns_zone_id,
-                        &record_name,
-                        "A",
-                    ) {
-                        Ok(result) => info!("Update IPv4 successful: {:?}", result),
-                        Err(e) => error!("Error updating DNS for IPv4: {}", e),
+                    if record.target == public_ipv4.to_string() {
+                        info!("DNS record for IPv4 is already up to date.");
+                    } else {
+                        info!("Updating DNS record for IPv4...");
+                        match dns_record::update_dns_record(
+                            &client,
+                            INFOMANIAK_ZONES_API_URL,
+                            &public_ipv4.to_string(),
+                            Some(&record.id.to_string()),
+                            &dns_zone_id,
+                            record_name,
+                            "A",
+                        ) {
+                            Ok(result) => info!("Update IPv4 successful: {:?}", result),
+                            Err(e) => error!("Error updating DNS for IPv4: {}", e),
+                        }
                     }
                 }
-            }
-            if ipv6_enabled && record.source == record_name && record.record_type == "AAAA" {
-                info!("Found AAAA record: {:?}", record);
-                record_aaaa_found = true;
+                if ipv6_enabled && record.source == record_name && record.record_type == "AAAA" {
+                    info!("Found AAAA record: {:?}", record);
+                    record_aaaa_found = true;
 
-                if record.target == public_ipv6.unwrap().to_string() {
-                    info!("DNS record for IPv6 is already up to date.");
-                } else {
-                    info!("Updating DNS record for IPv6...");
-                    match dns_record::update_dns_record(
-                        &client,
-                        INFOMANIAK_ZONES_API_URL,
-                        &public_ipv6.unwrap().to_string(),
-                        Some(&record.id.to_string()),
-                        &dns_zone_id,
-                        &record_name,
-                        "AAAA",
-                    ) {
-                        Ok(result) => info!("Update IPv6 successful: {:?}", result),
-                        Err(e) => error!("Error updating DNS for IPv6: {}", e),
+                    if record.target == public_ipv6.unwrap().to_string() {
+                        info!("DNS record for IPv6 is already up to date.");
+                    } else {
+                        info!("Updating DNS record for IPv6...");
+                        match dns_record::update_dns_record(
+                            &client,
+                            INFOMANIAK_ZONES_API_URL,
+                            &public_ipv6.unwrap().to_string(),
+                            Some(&record.id.to_string()),
+                            &dns_zone_id,
+                            record_name,
+                            "AAAA",
+                        ) {
+                            Ok(result) => info!("Update IPv6 successful: {:?}", result),
+                            Err(e) => error!("Error updating DNS for IPv6: {}", e),
+                        }
                     }
                 }
+                if record_a_found && record_aaaa_found {
+                    break; // No need to check further if both records are found
+                }
             }
-            if record_a_found && record_aaaa_found {
-                break; // No need to check further if both records are found
+            if !record_a_found {
+                info!("No matching A record found for {}", record_name);
+                match dns_record::update_dns_record(
+                    &client,
+                    INFOMANIAK_ZONES_API_URL,
+                    &public_ipv4.to_string(),
+                    None,
+                    &dns_zone_id,
+                    record_name,
+                    "A",
+                ) {
+                    Ok(result) => info!("Update IPv4 successful: {:?}", result),
+                    Err(e) => error!("Error updating DNS for IPv4: {}", e),
+                }
             }
-        }
-        if !record_a_found {
-            info!("No matching A record found for {}", record_name);
-            match dns_record::update_dns_record(
-                &client,
-                INFOMANIAK_ZONES_API_URL,
-                &public_ipv4.to_string(),
-                None,
-                &dns_zone_id,
-                &record_name,
-                "A",
-            ) {
-                Ok(result) => info!("Update IPv4 successful: {:?}", result),
-                Err(e) => error!("Error updating DNS for IPv4: {}", e),
-            }
-        }
-        if ipv6_enabled && !record_aaaa_found {
-            info!("No matching AAAA record found for {}", record_name);
-            match dns_record::update_dns_record(
-                &client,
-                INFOMANIAK_ZONES_API_URL,
-                &public_ipv6.unwrap().to_string(),
-                None,
-                &dns_zone_id,
-                &record_name,
-                "AAAA",
-            ) {
-                Ok(result) => info!("Update IPv6 successful: {:?}", result),
-                Err(e) => error!("Error updating DNS for IPv6: {}", e),
+            if ipv6_enabled && !record_aaaa_found {
+                info!("No matching AAAA record found for {}", record_name);
+                match dns_record::update_dns_record(
+                    &client,
+                    INFOMANIAK_ZONES_API_URL,
+                    &public_ipv6.unwrap().to_string(),
+                    None,
+                    &dns_zone_id,
+                    record_name,
+                    "AAAA",
+                ) {
+                    Ok(result) => info!("Update IPv6 successful: {:?}", result),
+                    Err(e) => error!("Error updating DNS for IPv6: {}", e),
+                }
             }
         }
 

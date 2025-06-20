@@ -58,12 +58,12 @@ pub fn update_dns_record(
     ip: &str,
     record_id_to_delete: Option<&str>,
     dns_zone_id: &str,
-    record_name: &str,
+    records_name: &str,
     record_type: &str,
 ) -> Result<DnsRecord, Box<dyn Error>> {
     // Prepare data for updating or creating
     let record_data = json!({
-        "source": record_name,
+        "source": records_name,
         "target": ip,
         "type": record_type,
         "ttl": "300" // TTL in seconds
@@ -81,7 +81,7 @@ pub fn update_dns_record(
         if !delete_record_result.status().is_success() {
             return Err(format!(
                 "Error updating DNS record {} of type {}: {}",
-                record_name,
+                records_name,
                 record_type,
                 delete_record_result.status()
             )
