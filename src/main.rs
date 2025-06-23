@@ -99,6 +99,7 @@ fn main() {
             };
 
         for record_name in records_name.split(',') {
+            info!("Updating record: {:?}", record_name);
             let mut record_a_found = false;
             let mut record_aaaa_found = false;
             for record in &dns_records {
