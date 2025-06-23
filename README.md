@@ -43,6 +43,8 @@ services:
       - INFOMANIAK_DYNDNS_WILDCARD_IPV6_ENABLED=false # Default to false
 ```
 
+For update IP of root domain, please use `.`.
+
 ## How to hack
 
 First, you should set all environment variables beginning with

@@ -63,7 +63,11 @@ pub fn update_dns_record(
 ) -> Result<DnsRecord, Box<dyn Error>> {
     // Prepare data for updating or creating
     let record_data = json!({
-        "source": records_name,
+        "source": if records_name == "." {
+            ""
+        } else {
+            records_name
+        },
         "target": ip,
         "type": record_type,
         "ttl": "300" // TTL in seconds
