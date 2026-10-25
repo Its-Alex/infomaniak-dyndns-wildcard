@@ -8,7 +8,7 @@ COPY ./src ./src
 
 RUN cargo build --release
 
-FROM debian:12.8-slim
+FROM debian:13.7-slim
 
 RUN apt-get update && \
     apt-get install -y ca-certificates openssl && \
