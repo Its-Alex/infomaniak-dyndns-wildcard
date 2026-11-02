@@ -1,4 +1,4 @@
-FROM rust:1.87.0-bookworm AS build
+FROM rust:1.99.1-bookworm AS build
 
 WORKDIR /infomaniak-dyndns-wildcard
 
